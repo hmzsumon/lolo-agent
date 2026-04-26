@@ -257,7 +257,7 @@ export default function AgentDashboardPage() {
             </div>
 
             {/* Deposit Commission */}
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
+            {/* <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
               <MetricCard
                 title="Deposit Commission"
                 value={formatCurrency(depositCommission)}
@@ -268,10 +268,10 @@ export default function AgentDashboardPage() {
                     : `Today: ${formatCurrency(depositCommissionToday)}`
                 }
               />
-            </div>
+            </div> */}
 
             {/* Withdraw Commission */}
-            <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
+            {/* <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md">
               <MetricCard
                 title="Withdraw Commission"
                 value={formatCurrency(withdrawCommission)}
@@ -282,13 +282,13 @@ export default function AgentDashboardPage() {
                     : `Today: ${formatCurrency(withdrawCommissionToday)}`
                 }
               />
-            </div>
+            </div> */}
           </div>
 
           {/* Main Grid */}
           <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-12">
             {/* Left: Quick Actions */}
-            <div className="lg:col-span-7 space-y-4">
+            {/* <div className="lg:col-span-7 space-y-4">
               <Card className="rounded-2xl border-white/10 bg-white/5 backdrop-blur-md">
                 <CardHeader>
                   <CardTitle className="text-base text-white/90">
@@ -331,7 +331,7 @@ export default function AgentDashboardPage() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
+            </div> */}
 
             {/* Right: Referral Card */}
             <div className="lg:col-span-5 space-y-4">

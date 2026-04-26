@@ -2,6 +2,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   Clock4,
+  Coins,
   Download,
   Grid2x2,
   LifeBuoy,
@@ -68,6 +69,13 @@ export const NAV_ITEMS: NavItem[] = [
         href: "/wallet/my-payment-methods",
       },
     ],
+  },
+  {
+    key: "lolo-coin",
+    label: "LOLO Coin",
+    icon: Coins,
+    href: "/lolo-coin",
+    badge: "new",
   },
   {
     key: "rewards",
