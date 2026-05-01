@@ -1,61 +1,90 @@
 "use client";
-import {
-  useCreateDepositWithBDTMutation,
-  useGetPaymentMethodsQuery,
-} from "@/redux/features/deposit/depositApi";
-import { useEffect, useMemo, useState } from "react";
 
+import {
+  useCreateAgentFloatRequestMutation,
+  useGetAgentDepositPaymentMethodsQuery,
+} from "@/redux/features/agent/agentFloatApi";
 import { fetchBaseQueryError } from "@/redux/services/helpers";
 import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { FaAngleLeft } from "react-icons/fa";
 
-const presetAmounts = [300, 500, 1000, 2000, 5000, 10000];
+const presetAmounts = [10000, 15000, 20000, 25000, 30000];
+
+type AgentDepositPaymentMethod = {
+  _id: string;
+  title?: string;
+  methodName: string;
+  methodType?: "agent" | "personal";
+  accountNumber?: string;
+  instructions?: string;
+  isActive?: boolean;
+};
 
 export default function BkashPage() {
   const router = useRouter();
+
+  /*
+   * এই mutation দিয়ে agent deposit/topup request create হবে।
+   * Admin পরে float requests page থেকে approve/reject করবে।
+   */
   const [
-    createDepositWithBDT,
+    createAgentFloatRequest,
     {
       isLoading: isCreating,
       isError: isCreateError,
       isSuccess: isCreateSuccess,
       error: createError,
     },
-  ] = useCreateDepositWithBDTMutation();
+  ] = useCreateAgentFloatRequestMutation();
 
-  const { data, isLoading, isError } = useGetPaymentMethodsQuery(undefined);
-  const { paymentMethods } = data || {};
+  /*
+   * Admin-created agent deposit payment methods load করা হচ্ছে।
+   * Backend response যদি data অথবা paymentMethods নামে আসে—দুইটাই support করা হলো।
+   */
+  const {
+    data: methodsRes,
+    isLoading: isMethodsLoading,
+    isError: isMethodsError,
+    refetch: refetchMethods,
+  } = useGetAgentDepositPaymentMethodsQuery(undefined);
+
+  const paymentMethods: AgentDepositPaymentMethod[] =
+    methodsRes?.data || methodsRes?.paymentMethods || [];
 
   const [amount, setAmount] = useState<number | "">("");
   const [customerNumber, setCustomerNumber] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<
-    | {
-        _id: string;
-        methodName: string;
-        methodType?: string;
-        accountNumber?: string;
-      }
-    | undefined
-  >(undefined);
-  console.log("Payment Method:", paymentMethod);
-
-  /* ────────── Filter Payment Methods by methodName= "Bkash" ────────── */
-  useEffect(() => {
-    if (paymentMethods) {
-      const bkashMethod = paymentMethods.find(
-        (method: { methodName: string }) => method.methodName === "Bkash"
-      );
-      if (bkashMethod) {
-        setPaymentMethod(bkashMethod);
-      }
-    }
-  }, [paymentMethods]);
-
+  const [paymentMethod, setPaymentMethod] =
+    useState<AgentDepositPaymentMethod>();
   const [txnId, setTxnId] = useState("");
 
-  const min = 300;
-  const max = 20000;
+  const min = 10000;
+  const max = 30000;
+
+  /*
+   * Bkash method auto select করা হচ্ছে।
+   * আগে active Bkash agent method নিবে।
+   * না থাকলে যেকোনো active Bkash method নিবে।
+   */
+  useEffect(() => {
+    if (!paymentMethods?.length) return;
+
+    const bkashAgentMethod = paymentMethods.find(
+      (method) =>
+        method.methodName?.toLowerCase() === "bkash" &&
+        method.methodType === "agent" &&
+        method.isActive !== false,
+    );
+
+    const bkashAnyMethod = paymentMethods.find(
+      (method) =>
+        method.methodName?.toLowerCase() === "bkash" &&
+        method.isActive !== false,
+    );
+
+    setPaymentMethod(bkashAgentMethod || bkashAnyMethod);
+  }, [paymentMethods]);
 
   const amountError =
     amount !== "" && (Number(amount) < min || Number(amount) > max)
@@ -63,47 +92,95 @@ export default function BkashPage() {
       : "";
 
   const isValid = useMemo(() => {
+    if (isCreating || isMethodsLoading) return false;
+    if (!paymentMethod?._id) return false;
     if (amount === "" || !!amountError) return false;
+    if (!customerNumber.trim()) return false;
     if (!txnId.trim()) return false;
+
     return true;
-  }, [amount, amountError, txnId]);
+  }, [
+    amount,
+    amountError,
+    customerNumber,
+    txnId,
+    paymentMethod?._id,
+    isCreating,
+    isMethodsLoading,
+  ]);
 
   const copyAgent = () => {
-    if (paymentMethod?.accountNumber) {
-      navigator.clipboard
-        .writeText(paymentMethod.accountNumber)
-        .catch(() => {});
+    if (!paymentMethod?.accountNumber) return;
+
+    navigator.clipboard
+      .writeText(paymentMethod.accountNumber)
+      .then(() => toast.success("Number copied"))
+      .catch(() => toast.error("Copy failed"));
+  };
+
+  /*
+   * Submit Handler
+   * এখানে user deposit API call হবে না।
+   * Agent float/topup request create হবে।
+   * Request successful হলে history page-এ redirect করবে।
+   */
+  const handleSubmit = async () => {
+    if (!isValid || !paymentMethod?._id) return;
+
+    try {
+      await createAgentFloatRequest({
+        type: "topup",
+        amount: Number(amount),
+        txnId: txnId.trim(),
+
+        // Admin-created payment method id
+        paymentMethodId: paymentMethod._id,
+
+        // Agent যে number/account থেকে টাকা পাঠিয়েছে
+        senderNumber: customerNumber.trim(),
+
+        // Optional note, admin request details এ দেখতে পারবে
+        note: `Bkash ${paymentMethod.methodType || "agent"} deposit request`,
+      }).unwrap();
+
+      toast.success("Agent deposit request submitted successfully!");
+
+      setAmount("");
+      setCustomerNumber("");
+      setTxnId("");
+      refetchMethods();
+
+      /*
+       * Request successful হওয়ার পরে history page-এ যাবে।
+       * আপনার route যদি /agent/deposit-history হয়,
+       * তাহলে নিচের path change করে দিন।
+       */
+      router.push("/agent-deposit-history");
+    } catch (error: any) {
+      toast.error(
+        error?.data?.message ||
+          error?.data?.error ||
+          "Agent deposit request failed",
+      );
     }
   };
 
-  /* ────────── Submit Handler ────────── */
-
-  const handleSubmit = async () => {
-    if (!isValid) return;
-
-    const data = {
-      amount: Number(amount),
-      customerNumber,
-      txnId,
-      methodId: paymentMethod?._id,
-    };
-
-    console.log("Submitting data:", data);
-
-    // Call your API or payment processing function here
-    createDepositWithBDT(data);
-  };
-
-  /* ────────── useEffect for deposit ────────── */
-
+  /*
+   * API error fallback toast
+   */
   useEffect(() => {
     if (isCreateError) {
-      toast.error((createError as fetchBaseQueryError).data?.error);
+      toast.error(
+        (createError as fetchBaseQueryError)?.data?.error ||
+          "Deposit request failed",
+      );
     }
-    if (isCreateSuccess) {
-      toast.success("Deposit created successfully!");
-    }
-  }, [isCreateError, isCreateSuccess]);
+  }, [isCreateError, createError]);
+
+  const methodTitle =
+    paymentMethod?.methodType === "personal"
+      ? "বিকাশ পার্সোনাল নম্বর"
+      : "বিকাশ এজেন্ট নম্বর";
 
   return (
     <div>
@@ -116,7 +193,8 @@ export default function BkashPage() {
           Back
         </button>
       </div>
-      <div className=" min-h-screen bg-transparent text-white flex items-start justify-center p-4">
+
+      <div className="min-h-screen bg-transparent text-white flex items-start justify-center p-4">
         <div className="w-full max-w-md rounded-lg border border-[#00493B] bg-[#01241D] shadow-xl">
           {/* Top notice bar */}
           <div className="rounded-t-lg bg-[#2F69B1] px-4 py-3 text-sm">
@@ -128,28 +206,41 @@ export default function BkashPage() {
 
           {/* Body */}
           <div className="p-4 space-y-4">
-            {/* Header row: name + agent number + copy */}
+            {/* Payment method loading/error state */}
+            {isMethodsLoading ? (
+              <p className="rounded border border-[#2a7565] bg-[#031a15] px-3 py-2 text-sm text-gray-300">
+                Loading payment method...
+              </p>
+            ) : null}
+
+            {isMethodsError ? (
+              <p className="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300">
+                Payment method load failed. Please refresh.
+              </p>
+            ) : null}
+
+            {!isMethodsLoading && !paymentMethod ? (
+              <p className="rounded border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-200">
+                No active Bkash deposit method found. Please contact admin.
+              </p>
+            ) : null}
+
+            {/* Payment number */}
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
-                {paymentMethod?.methodType === "agent" ? (
-                  <h2 className="text-base font-semibold">
-                    বিকাশ এজেন্ট নম্বর
-                  </h2>
-                ) : (
-                  <h2 className="text-base font-semibold">
-                    বিকাশ পার্সোনাল নম্বর
-                  </h2>
-                )}
+                <h2 className="text-base font-semibold">{methodTitle}</h2>
+
                 <div className="flex items-center gap-2 text-sm text-gray-200">
                   <span className="font-mono tracking-wide">
-                    {paymentMethod?.accountNumber}
+                    {paymentMethod?.accountNumber || "N/A"}
                   </span>
+
                   <button
                     onClick={copyAgent}
-                    className="inline-flex items-center gap-1 rounded border border-[#2a7565] px-2 py-0.5 text-xs hover:bg-[#00493B]"
+                    disabled={!paymentMethod?.accountNumber}
+                    className="inline-flex items-center gap-1 rounded border border-[#2a7565] px-2 py-0.5 text-xs hover:bg-[#00493B] disabled:cursor-not-allowed disabled:opacity-50"
                     title="Copy number"
                   >
-                    {/* copy icon */}
                     <svg
                       width="14"
                       height="14"
@@ -161,9 +252,24 @@ export default function BkashPage() {
                     Copy
                   </button>
                 </div>
+
+                {paymentMethod?.title ? (
+                  <p className="text-xs text-gray-400">{paymentMethod.title}</p>
+                ) : null}
+
+                {paymentMethod?.methodType ? (
+                  <p className="text-xs capitalize text-gray-400">
+                    Type: {paymentMethod.methodType}
+                  </p>
+                ) : null}
               </div>
-              {/* small helper icons */}
             </div>
+
+            {paymentMethod?.instructions ? (
+              <p className="rounded border border-[#2a7565] bg-[#031a15] px-3 py-2 text-xs leading-relaxed text-gray-300">
+                {paymentMethod.instructions}
+              </p>
+            ) : null}
 
             {/* Amount */}
             <div className="space-y-2">
@@ -173,6 +279,7 @@ export default function BkashPage() {
                   (Min {min.toFixed(2)} / Max {max.toLocaleString()} BDT)
                 </span>
               </label>
+
               <div className="flex flex-col gap-2">
                 <input
                   type="number"
@@ -182,46 +289,49 @@ export default function BkashPage() {
                   value={amount}
                   onChange={(e) =>
                     setAmount(
-                      e.target.value === "" ? "" : Number(e.target.value)
+                      e.target.value === "" ? "" : Number(e.target.value),
                     )
                   }
                   placeholder="0.00"
                   className="w-full rounded border border-[#00493B] bg-[#031a15] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#2a7565]"
                 />
+
                 <div className="flex flex-wrap gap-2">
-                  {presetAmounts.map((v) => (
+                  {presetAmounts.map((value) => (
                     <button
-                      key={v}
+                      key={value}
                       type="button"
-                      onClick={() => setAmount(v)}
+                      onClick={() => setAmount(value)}
                       className="rounded border border-[#2a7565] bg-transparent px-3 py-2 text-sm hover:bg-[#00493B]"
                     >
-                      {v.toLocaleString()}
+                      {value.toLocaleString()}
                     </button>
                   ))}
                 </div>
               </div>
+
               {amountError ? (
                 <p className="text-xs text-red-400">{amountError}</p>
               ) : (
                 <p className="text-xs text-gray-400">
-                  Example: 500, 1000, 2000…
+                  Example: 10000, 15000, 20000…
                 </p>
               )}
             </div>
 
-            {/* Last two digits of your bKash account number */}
+            {/* Sender bKash account number */}
             <div className="space-y-1">
               <label className="text-sm font-semibold">
                 আপনার বিকাশ অ্যাকাউন্ট নম্বর :
               </label>
+
               <div className="flex items-center gap-2">
                 <input
                   type="text"
                   inputMode="numeric"
                   value={customerNumber}
                   onChange={(e) => setCustomerNumber(e.target.value)}
-                  placeholder="01"
+                  placeholder="01XXXXXXXXX"
                   className="w-full rounded border border-[#00493B] bg-[#031a15] px-3 py-2 text-sm text-center outline-none focus:ring-2 focus:ring-[#2a7565]"
                 />
               </div>
@@ -234,6 +344,7 @@ export default function BkashPage() {
                   Transaction ID :
                 </label>
               </div>
+
               <div className="flex items-center gap-2">
                 <input
                   type="text"
@@ -257,11 +368,10 @@ export default function BkashPage() {
             {/* Confirm */}
             <button
               disabled={!isValid}
-              className="mt-2 w-full rounded bg-[#4CAF50] py-3 text-center text-sm font-semibold text-white transition
-                       enabled:hover:bg-[#3ea145] disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-2 w-full rounded bg-[#4CAF50] py-3 text-center text-sm font-semibold text-white transition enabled:hover:bg-[#3ea145] disabled:cursor-not-allowed disabled:opacity-50"
               onClick={handleSubmit}
             >
-              CONFIRM
+              {isCreating ? "SUBMITTING..." : "CONFIRM"}
             </button>
           </div>
         </div>

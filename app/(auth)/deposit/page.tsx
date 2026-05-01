@@ -19,6 +19,17 @@ import UsdtIcon from "@/public/images/deposit/usdt-trc20.svg";
 /* ── data: payment methods ──────────────────────────────────── */
 const ALL_ITEMS: DepositItem[] = [
   {
+    key: "bkash",
+    name: "bKash",
+    Icon: BkashIcon,
+    colorClass: "text-pink-400",
+    processing: "Instant – 30 minutes",
+    fee: "0%",
+    limits: "10000 – 30000 BDT",
+    status: "available",
+    tags: ["Local", "BD"],
+  },
+  {
     key: "bep-20",
     name: "Tether (USDT TRC20)",
     Icon: UsdtIcon,
@@ -26,7 +37,7 @@ const ALL_ITEMS: DepositItem[] = [
     processing: "Instant – 15 minutes",
     fee: "0%",
     limits: "10 – 200,000 USD",
-    status: "available",
+    status: "unavailable",
     tags: ["Crypto", "TRON"],
   },
   {
@@ -41,17 +52,6 @@ const ALL_ITEMS: DepositItem[] = [
     tags: ["Crypto", "Wallet"],
   },
 
-  {
-    key: "bkash",
-    name: "bKash",
-    Icon: BkashIcon,
-    colorClass: "text-pink-400",
-    processing: "Instant – 30 minutes",
-    fee: "0%",
-    limits: "10 – 300 USD",
-    status: "unavailable",
-    tags: ["Local", "BD"],
-  },
   {
     key: "bank-card",
     name: "Bank Card",

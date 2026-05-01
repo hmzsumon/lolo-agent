@@ -40,6 +40,14 @@ export const NAV_ITEMS: NavItem[] = [
         label: "Manual Deposits",
         href: "/deposits/manual",
       },
+      {
+        label: "Agent Deposit Requests",
+        href: "/deposit",
+      },
+      {
+        label: "My Deposit History",
+        href: "/agent-deposit-history",
+      },
     ],
   },
 
@@ -77,12 +85,7 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/lolo-coin",
     badge: "new",
   },
-  {
-    key: "rewards",
-    label: "Rewards",
-    icon: Wallet,
-    children: [{ label: "Grant Reward", href: "/rewards/grant" }],
-  },
+
   {
     key: "history",
     label: "Transaction history",
