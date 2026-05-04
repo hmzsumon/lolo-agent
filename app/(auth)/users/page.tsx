@@ -2,7 +2,7 @@
 "use client";
 import AdminUsersTable from "@/components/admin/AdminUsersTable";
 import AdminUsersToolbar from "@/components/admin/AdminUsersToolbar";
-import { useGetAllUsersQuery } from "@/redux/features/admin/adminUsersApi";
+import { useGetMyAgentsAllUsersQuery } from "@/redux/features/agent/agentApi";
 
 import { useMemo, useState } from "react";
 
@@ -18,7 +18,7 @@ const AllUsersPage = () => {
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   /* ────────── data ────────── */
-  const { data, isLoading, isFetching } = useGetAllUsersQuery({
+  const { data, isLoading, isFetching } = useGetMyAgentsAllUsersQuery({
     page,
     limit: pageSize,
     search: search || undefined,
@@ -42,7 +42,7 @@ const AllUsersPage = () => {
   const initialSort = useMemo(
     () => [{ field: sortBy, sort: sortOrder }] as any,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [],
   );
 
   return (
