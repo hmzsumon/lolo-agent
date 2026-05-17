@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Settings,
   SquareGanttChart,
+  TrendingUp,
   Upload,
   Users,
   Wallet,
@@ -84,6 +85,17 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Coins,
     href: "/lolo-coin",
     badge: "new",
+  },
+
+  {
+    key: "agent-profit",
+    label: "Agent Profit",
+    icon: TrendingUp,
+    badge: "new",
+    children: [
+      { label: "Profit Wallet", href: "/agent-profit" },
+      { label: "Withdraw Request", href: "/agent-profit/withdraw" },
+    ],
   },
 
   {

@@ -155,6 +155,51 @@ export const agentFinanceApi = apiSlice.injectEndpoints({
       }),
     }),
 
+    /* ────────── Agent Profit Summary ────────── */
+    getMyAgentProfitSummary: builder.query<any, void>({
+      query: () => ({
+        url: "/agent/me/profit-summary",
+        method: "GET",
+      }),
+      providesTags: ["AgentProfit" as any],
+    }),
+
+    /* ────────── Agent Profit Transactions / History ────────── */
+    getMyAgentProfitTransactions: builder.query<any, void>({
+      query: () => ({
+        url: "/agent/me/profit-transactions",
+        method: "GET",
+      }),
+      providesTags: ["AgentProfit" as any],
+    }),
+
+    /* ────────── Agent Profit Withdraw Requests ────────── */
+    getMyAgentProfitWithdrawRequests: builder.query<any, void>({
+      query: () => ({
+        url: "/agent/me/profit-withdraw-requests",
+        method: "GET",
+      }),
+      providesTags: ["AgentProfit" as any],
+    }),
+
+    /* ────────── Create Agent Profit Withdraw Request ────────── */
+    createMyAgentProfitWithdrawRequest: builder.mutation<
+      any,
+      {
+        amount: number;
+        methodName: "bkash" | "nagad";
+        accountNumber: string;
+        note?: string;
+      }
+    >({
+      query: (body) => ({
+        url: "/agent/me/profit-withdraw-requests",
+        method: "POST",
+        body,
+      }),
+      invalidatesTags: ["AgentProfit" as any],
+    }),
+
     /* ────────── End Payment Method api ────────── */
   }),
 });
@@ -180,4 +225,10 @@ export const {
 
   /* ────────── dashboard Summary ────────── */
   useGetMyDashboardSummaryQuery,
+
+  /* ────────── Agent Profit Hooks ────────── */
+  useGetMyAgentProfitSummaryQuery,
+  useGetMyAgentProfitTransactionsQuery,
+  useGetMyAgentProfitWithdrawRequestsQuery,
+  useCreateMyAgentProfitWithdrawRequestMutation,
 } = agentFinanceApi;

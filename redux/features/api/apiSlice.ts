@@ -33,6 +33,7 @@ export const apiSlice = createApi({
     "AgentPaymentMethods",
     "MyFloatRequests",
     "AgentRewards",
+    "AgentProfit",
     "AgentDepositPaymentMethods",
   ],
   endpoints: (builder) => ({}),
